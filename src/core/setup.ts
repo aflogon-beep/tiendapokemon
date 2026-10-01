@@ -108,3 +108,37 @@ export async function retrySets(g: Game): Promise<{ tried: number; left: number 
   ensure(g);
   return { tried: ids.length, left: FAILED.size };
 }
+
+/** Añade colecciones al catálogo cargando sus cartas de 3 en 3 (addSets de la v10) */
+export async function addSets(g: Game, ids: string[], onProgress?: (done: number, total: number) => void): Promise<{ ok: number; total: number }> {
+  ids = ids.filter((id) => !g.S.sets.includes(id) && setDef(id));
+  if (!ids.length || g.mode !== 'real') return { ok: 0, total: ids.length };
+  let done = 0, ok = 0;
+  const q = ids.slice();
+  let cards = g.db.cards;
+  const work = async (): Promise<void> => {
+    const id = q.shift();
+    if (!id) return;
+    const sd = setDef(id)!, cs = await fetchSetCards(sd);
+    done++;
+    if (cs.length) {
+      cs.forEach((c) => (c.s = sd.id));
+      cards = cards.filter((c) => c.s !== sd.id).concat(cs);
+      g.S.sets.push(sd.id);
+      ok++;
+    }
+    onProgress?.(done, ids.length);
+    return work();
+  };
+  await Promise.all([work(), work(), work()]);
+  g.db = indexCards(cards);
+  ensure(g);
+  return { ok, total: ids.length };
+}
+
+/** Quita un set del catálogo (solo si no tienes sobres ni cartas suyas) */
+export function removeSet(g: Game, id: string): void {
+  g.S.sets = g.S.sets.filter((x) => x !== id);
+  g.S.slots = g.S.slots.map((x) => (x === id ? null : x));
+  ensure(g);
+}

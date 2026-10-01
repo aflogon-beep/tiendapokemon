@@ -42,6 +42,8 @@ interface OpenState {
 }
 
 let openState: OpenState | null = null;
+/** ¿Se está viendo el resumen de la apertura? (para el tutorial) */
+export const isOpenSummary = (): boolean => openState?.mode === 'sum';
 let CUR: HTMLElement | null = null;
 
 /* --- inclinación: dedo, giroscopio o balanceo automático --- */
@@ -96,6 +98,14 @@ function ptTilt(e: PointerEvent): void {
   requestAnimationFrame(tiltLoop);
 })();
 
+/** Hace que un elemento se incline con el dedo o el giroscopio */
+export function tiltTo(el: HTMLElement, stage: HTMLElement): void {
+  TILT.el = el;
+  stage.addEventListener('pointermove', ptTilt);
+  stage.addEventListener('pointerdown', askGyro);
+}
+export const untilt = (): void => void (TILT.el = null);
+
 /* --- brillo y nivel de «golpe» de cada carta --- */
 function holoOf(c: Card, rv: boolean): { ho: number; cl: string } {
   const t = ({ R: [0.18, ''], DR: [0.36, ''], IR: [0.4, ''], UR: [0.45, 'sp'], SIR: [0.5, 'sp'], HR: [0.52, 'gold sp'] } as Record<string, [number, string]>)[c.r] || [0, ''];
@@ -118,7 +128,7 @@ function pcHTML(c: Card, rv: boolean, back: boolean, lv: number): string {
   );
 }
 
-function confetti(lv: number, col: string): void {
+export function confetti(lv: number, col: string): void {
   if (RM) return;
   const root = $('#px') || $('#zv');
   if (!root) return;

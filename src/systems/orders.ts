@@ -2,7 +2,8 @@ import { pick, r05, rand, rnd } from '../core/rng';
 import type { Game } from '../core/game';
 import type { Item, Order } from '../core/state';
 import { price } from './economy';
-import { RG, regS } from './regulars';
+import { loy, RG, regS } from './regulars';
+import { track } from './missions';
 
 /* Encargos de clientes habituales (v10) */
 
@@ -18,4 +19,26 @@ export function genOrder(g: Game): void {
 export function ownFor(g: Game, o: Order): Item | undefined {
   const l = g.S.items.filter((i) => i.c === o.c && !i.gq && !i.res && !i.fkK);
   return l.find((i) => i.case == null) || l[0];
+}
+
+export type Delivery = { k: 'none' } | { k: 'fake'; who: string } | { k: 'ok'; who: string; pay: number };
+
+/** Entregar un encargo con una carta propia (si era falsa, el cliente lo descubre) */
+export function deliverOrder(g: Game, id: number): Delivery {
+  const S = g.S, o = S.orders.find((x) => x.id === id);
+  if (!o) return { k: 'none' };
+  const it = ownFor(g, o);
+  if (!it) return { k: 'none' };
+  S.items.splice(S.items.indexOf(it), 1);
+  if (it.fk) {
+    S.repB = Math.max(0, S.repB - 2);
+    loy(g, o.reg, -20, 'Le entregaste una carta falsa');
+    return { k: 'fake', who: o.who };
+  }
+  S.money += o.pay;
+  S.repB += 1;
+  loy(g, o.reg, 15, 'Le conseguiste ' + g.db.byId[o.c].name);
+  S.orders = S.orders.filter((x) => x !== o);
+  track(g, 'order');
+  return { k: 'ok', who: o.who, pay: o.pay };
 }

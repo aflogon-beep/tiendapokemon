@@ -29,7 +29,7 @@ export function albPct(g: Game, sid: string): number {
 
 export const ALBR: [number, number, number][] = [[0.25, 40, 1], [0.5, 120, 2], [0.75, 300, 3], [1, 1000, 5]];
 
-function achVal(g: Game, a: (typeof ACH)[number]): number {
+export function achVal(g: Game, a: (typeof ACH)[number]): number {
   if (a.st === 'nw') return netWorth(g);
   if (a.st === 'alb50') return g.S.sets.some((s) => albPct(g, s) >= 0.5) ? 1 : 0;
   if (a.st === 'alb100') return g.S.sets.some((s) => albPct(g, s) >= 1) ? 1 : 0;
@@ -45,4 +45,15 @@ export function checkAch(g: Game): void {
       g.fx.sound('ach');
     }
   });
+}
+
+/** Cobrar un premio del álbum (25, 50, 75 o 100 % del set): dinero y reputación */
+export function claimAlbum(g: Game, sid: string, i: number): [number, number] | null {
+  const S = g.S, c = (S.albR[sid] ||= []), [t, m, r] = ALBR[i];
+  if (c.includes(i) || albPct(g, sid) < t) return null;
+  c.push(i);
+  S.money += m;
+  S.repB += r;
+  checkAch(g);
+  return [m, r];
 }

@@ -42,6 +42,14 @@ export function level(g: Game): number {
 }
 
 export const tierOf = (l: number): number => (l >= 7 ? 3 : l >= 5 ? 2 : l >= 3 ? 1 : 0);
+
+/** Categorías de la tienda según el nivel */
+export const TIERS = [
+  { n: 'Poké Cards', sub: 'Tienda de barrio' },
+  { n: 'Poké Cards', sub: 'Tienda de cartas' },
+  { n: 'Poké Cards Center', sub: 'Tienda especializada' },
+  { n: 'Poké Cards MEGASTORE', sub: 'Megastore' },
+];
 export const caseCap = (S: State): number => 8 + 8 * S.up.case;
 export const caseItems = (S: State): Item[] => S.items.filter((i) => i.case != null && !i.lux);
 export const slotCount = (S: State): number => 3 + 3 * S.up.shelf;
