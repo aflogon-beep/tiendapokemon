@@ -317,22 +317,7 @@ export function pay(g: Game, c: Customer, got?: number): void {
   c.st = 'leave';
 }
 
-/** Rechazar a un vendedor o a quien trae un lote (closeDeal / endLot sin trato en la v10) */
-export function dismiss(g: Game, c: Customer): void {
-  say(c, '👋');
-  leave(g, c, false);
-}
-
-export type ServeAction = 'sell' | 'lot' | 'auto' | 'haggle' | 'checkout';
-
-/** Qué hay que hacer con el primero de la cola (serveFront en la v10; la interfaz abre el panel) */
-export function serveAction(g: Game, c: Customer): ServeAction {
-  if (c.want.k === 'sell') return 'sell';
-  if (c.want.k === 'lot') return 'lot';
-  if (g.S.staff.cashier) return 'auto';
-  return canHaggle(c) ? 'haggle' : 'checkout';
-}
-
+/** ¿Pedirá rebaja? Solo cartas de la vitrina de 5 € o más, una vez por cliente */
 export function canHaggle(c: Customer): boolean {
   return (
     c.hold?.k === 'single' && c.hold.total >= 5 && !c.hg &&

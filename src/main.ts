@@ -18,9 +18,10 @@ import './ui/modals/coll';
 import { moreHooks } from './ui/modals/soon';
 import { ui } from './ui/ctx';
 import { paintNav } from './ui/nav';
+import { serveFront } from './ui/serve';
 import { sfx } from './ui/sound';
 import { FLOOR_T, FRONT_Y, LAY, W } from './systems/layout';
-import { front, pay, dismiss, serveAction, type Customer } from './systems/customers';
+import { front } from './systems/customers';
 import { openShop } from './systems/day';
 import { boot } from './core/boot';
 import { createGame, newGame } from './core/setup';
@@ -114,20 +115,6 @@ const fx: GameFx = {
 
 const refreshHud = () => game && hud(game, note);
 
-/** Atender al primero de la cola (serveFront de la v10) */
-function serve(g: Game, c: Customer): void {
-  const a = serveAction(g, c);
-  if (a === 'sell' || a === 'lot') {
-    // Comprar cartas y lotes a clientes llega con sus paneles en la F4
-    dismiss(g, c);
-    toast(a === 'sell' ? 'Comprar cartas a clientes estará en la próxima fase' : 'Los lotes estarán en la próxima fase');
-  } else {
-    // Cobro directo por el total (la caja con efectivo, TPV y regateo llega en la F4)
-    pay(g, c);
-  }
-  refreshHud();
-}
-
 function onAct(): void {
   const g = game;
   if (!g) return;
@@ -136,8 +123,7 @@ function onAct(): void {
     refreshHud();
     return;
   }
-  const f = front(g);
-  if (f) return serve(g, f);
+  if (front(g)) return serveFront(g);
   if (g.S.phase === 'closed') {
     openShop(g);
     refreshHud();
@@ -152,7 +138,7 @@ cam.onTap = (ground) => {
   const g = game;
   if (!g) return;
   const p = toPx(ground), f = front(g);
-  if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) serve(g, f);
+  if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) serveFront(g);
 };
 
 async function start(): Promise<void> {
