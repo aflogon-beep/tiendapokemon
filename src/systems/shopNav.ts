@@ -1,4 +1,4 @@
-import { DOOR, FLOOR_T, FRONT_Y, W, obstacles, type Rect } from './layout';
+import { DOOR, FLOOR_T, FRONT_Y, W, decorObstacles, obstacles, type Rect } from './layout';
 import { blockBand, createNavGrid, type NavGrid } from './nav';
 
 // Zona por la que se puede andar: interior de la tienda + acera (en px de la v10)
@@ -16,8 +16,8 @@ function shellObstacles(): Rect[] {
   ];
 }
 
-export function createShopNav(cap = 8): NavGrid {
-  const g = createNavGrid(WALK_BOUNDS, [...obstacles(cap), ...shellObstacles()], CHAR_RADIUS);
+export function createShopNav(cap = 8, decor: Record<string, unknown> = {}): NavGrid {
+  const g = createNavGrid(WALK_BOUNDS, [...obstacles(cap), ...decorObstacles(decor), ...shellObstacles()], CHAR_RADIUS);
   blockBand(g, FRONT_Y, SIDEWALK.y0, [DOOR_OPENING], CHAR_RADIUS);
   return g;
 }

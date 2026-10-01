@@ -7,6 +7,8 @@ import { createOccluders } from './world/occluders';
 import { buildShop, toPx, toWorld } from './world/shop';
 import { buildCity, CITY_BOUNDS, FAR_SIDEWALK } from './world/city';
 import { createCharacters, type Characters } from './world/characters';
+import { createMerch, type Merch } from './world/merch';
+import { createDecor, type Decor } from './world/decor';
 import { cycleCamera, mountZoomButtons } from './ui/zoomButtons';
 import { toast } from './ui/toast';
 import { hideLoading, loadingText, askOfflineWithRealSave } from './ui/loading';
@@ -32,7 +34,7 @@ import { boot } from './core/boot';
 import { createGame, newGame } from './core/setup';
 import { loadSaved } from './core/save';
 import { createLoop, type Loop } from './core/loop';
-import { stockForTest } from './core/sandbox';
+import { decorForTest, stockForTest } from './core/sandbox';
 import type { Game, GameFx } from './core/game';
 import { FAILED } from './data/cards';
 
@@ -101,6 +103,8 @@ moreHooks.zfit = () => cycleCamera(cam);
 
 let loop: Loop | null = null;
 let chars: Characters | null = null;
+let merch: Merch | null = null;
+let decor: Decor | null = null;
 let note = '';
 
 const fx: GameFx = {
@@ -164,6 +168,7 @@ async function start(): Promise<void> {
   const saved = testMode ? null : loadSaved(cards.mode);
   const g = saved ? createGame(saved.S, cards.db, cards.mode, fx) : newGame(cards.db, cards.mode, fx);
   if (testMode) stockForTest(g);
+  if (testMode && params.has('deco')) decorForTest(g, params.has('dinero') ? Number(params.get('dinero')) : null);
   // Velocidad del juego (1×, 2× o 4× como en la v10; el botón llega en la F4)
   const vel = Number(params.get('vel'));
   if ([1, 2, 4].includes(vel)) g.speed = vel;
@@ -177,6 +182,8 @@ async function start(): Promise<void> {
   const idle = shop.cashier.animations.find((c) => c.name === 'idle');
   if (idle) mixer.clipAction(idle).play();
   mixers.push(mixer);
+  merch = createMerch(scene);
+  decor = createDecor(scene, shop);
 
   loop = createLoop(g, { save: !testMode, onHud: refreshHud, onSaveFail: () => toast('⚠️ No se pudo guardar. Exporta una copia en Más → Partida') });
   ui.saveNow = () => loop!.saveNow();
@@ -216,6 +223,8 @@ renderer.setAnimationLoop((time) => {
     tickMoney(game, raw);
     const dt = halted ? 0 : raw * game.speed;
     chars?.update(game, dt);
+    merch?.update(game, raw);
+    decor?.update(game, raw);
     if (chars) drawBubbles(game, chars.heads(iso.camera, canvas.clientWidth, canvas.clientHeight));
     tutTick();
   }

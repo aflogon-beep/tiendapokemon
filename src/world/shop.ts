@@ -31,7 +31,20 @@ const place = (px: number, py: number, rotY = 0): Placement => {
 export interface Shop {
   door: ModelInstance;
   cashier: ModelInstance;
+  /** Grupos del suelo y de las paredes interiores (se tiñen según la categoría) */
+  floor: THREE.Group;
+  walls: THREE.Group[];
 }
+
+/** Materiales de un grupo instanciado */
+export const materialsOf = (o: THREE.Object3D): THREE.MeshStandardMaterial[] => {
+  const l: THREE.MeshStandardMaterial[] = [];
+  o.traverse((m) => {
+    const mat = (m as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+    if (mat && !l.includes(mat)) l.push(mat);
+  });
+  return l;
+};
 
 // Suelo: 8 × 5 baldosas exactas (x 0–800, y 48–548)
 function floorPlaces(): Placement[] {
@@ -42,7 +55,7 @@ function floorPlaces(): Placement[] {
 }
 
 // Paredes con la cara interior en los bordes de LAY
-async function buildWalls(scene: THREE.Scene, occ: Occluders): Promise<ModelInstance> {
+async function buildWalls(scene: THREE.Scene, occ: Occluders): Promise<{ door: ModelInstance; inner: THREE.Group[] }> {
   const half = WALL_PX / 2;
   const back: Placement[] = [], left: Placement[] = [], right: Placement[] = [], front: Placement[] = [], frontWin: Placement[] = [];
   for (let x = 0; x < W; x += TILE_PX) {
@@ -58,9 +71,10 @@ async function buildWalls(scene: THREE.Scene, occ: Occluders): Promise<ModelInst
   // wall-corner tiene los brazos hacia −x y +z; se gira para que sigan a las paredes
   const corners = [place(-half, FLOOR_T - half, 0), place(W + half, FLOOR_T - half, 0)];
   const frontCorners = [place(-half, FRONT_Y + half, Math.PI), place(W + half, FRONT_Y + half, -Math.PI / 2)];
+  const own = { ownMaterial: true };
   const [gBack, gLeft, gRight, gFront, gWin, gCorner, gFrontCorner, door] = await Promise.all([
-    spawnInstanced('market', 'wall', back),
-    spawnInstanced('market', 'wall', left),
+    spawnInstanced('market', 'wall', back, own),
+    spawnInstanced('market', 'wall', left, own),
     spawnInstanced('market', 'wall', right),
     spawnInstanced('market', 'wall', front),
     spawnInstanced('market', 'wall-window', frontWin),
@@ -74,23 +88,19 @@ async function buildWalls(scene: THREE.Scene, occ: Occluders): Promise<ModelInst
   scene.add(gBack, gLeft, gRight, gFront, gWin, gCorner, gFrontCorner, door.root);
   // La fachada y la pared derecha tapan el interior desde la cámara: se recortan
   for (const o of [gRight, gFront, gWin, gFrontCorner, door.root]) occ.addWall(o);
-  return door;
+  return { door, inner: [gBack, gLeft] };
 }
 
 async function buildShelves(scene: THREE.Scene): Promise<void> {
-  const boxes: Placement[] = [], bags: Placement[] = [];
+  const mods: Placement[] = [];
   for (let i = 0; i < SHELF_SLOTS; i++) {
     const r = shelfRect(i);
     const cy = r.y + SHELF_DEPTH_PX / 2;
-    // Dos módulos por hueco, alternando modelos para dar variedad
-    boxes.push(place(r.x + SHELF_MODULE_PX / 2, cy));
-    bags.push(place(r.x + SHELF_MODULE_PX * 1.5, cy));
+    // Dos módulos por hueco; los sobres de cada set se colocan en sus baldas (merch.ts)
+    mods.push(place(r.x + SHELF_MODULE_PX / 2, cy), place(r.x + SHELF_MODULE_PX * 1.5, cy));
   }
-  const [a, b] = await Promise.all([
-    spawnInstanced('market', 'shelf-boxes', boxes),
-    spawnInstanced('market', 'shelf-bags', bags),
-  ]);
-  scene.add(a, b);
+  // Sin los productos de fábrica del modelo (cartones y cajas)
+  scene.add(await spawnInstanced('market', 'shelf-boxes', mods, { skip: (n) => n.startsWith('carton') || n.startsWith('box') }));
 }
 
 // Mostrador: caja registradora (con la cinta del lado de la cola) + dos vitrinas bajas (freezer)
@@ -117,8 +127,8 @@ export async function buildShop(scene: THREE.Scene, occ: Occluders): Promise<Sho
   addProp(scene, buildProdTable(pr.w * PX_TO_M, pr.h * PX_TO_M), pr);
   addProp(scene, buildDesk(DESK.w * PX_TO_M, DESK.h * PX_TO_M), DESK);
 
-  const [floor, door, , , cashier] = await Promise.all([
-    spawnInstanced('market', 'floor', floorPlaces()),
+  const [floor, walls, , , cashier] = await Promise.all([
+    spawnInstanced('market', 'floor', floorPlaces(), { ownMaterial: true }),
     buildWalls(scene, occ),
     buildShelves(scene),
     buildCounter(scene),
@@ -129,7 +139,7 @@ export async function buildShop(scene: THREE.Scene, occ: Occluders): Promise<Sho
   cashier.root.position.copy(cp);
   cashier.root.rotation.y = -Math.PI / 2;
   scene.add(cashier.root);
-  return { door, cashier };
+  return { door: walls.door, cashier, floor, walls: walls.inner };
 }
 
 export const worldOf = (p: Point) => toWorld(p.x, p.y);

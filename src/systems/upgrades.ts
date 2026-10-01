@@ -21,7 +21,7 @@ export function buyUpgrade(g: Game, k: (typeof UPS)[number]['k']): boolean {
   g.S.up[k]++;
   assignSlots(g);
   // La vitrina grande ocupa más sitio: los clientes la rodean
-  if (k === 'case') g.nav = createShopNav(caseCap(g.S));
+  if (k === 'case') g.nav = createShopNav(caseCap(g.S), g.S.decor);
   return true;
 }
 
@@ -30,6 +30,8 @@ export function buyDecor(g: Game, k: string): boolean {
   if (!x || g.S.decor[x.k] || g.S.money < x.cost) return false;
   g.S.money -= x.cost;
   g.S.decor[x.k] = 1;
+  // Los muebles nuevos ocupan sitio: los clientes los rodean
+  g.nav = createShopNav(caseCap(g.S), g.S.decor);
   return true;
 }
 

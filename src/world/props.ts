@@ -5,7 +5,7 @@ import * as THREE from 'three';
  * Colores de la v10 (nivel de tienda 0). Medidas en metros; origen en el centro de la huella.
  */
 
-const mat = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) =>
+export const mat = (color: string, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
 
 const M = {
@@ -19,7 +19,7 @@ const M = {
   dark: mat('#222222'),
 };
 
-function box(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0, shadow = true): THREE.Mesh {
+export function box(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0, shadow = true): THREE.Mesh {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
   mesh.position.set(x, y + h / 2, z);
   mesh.castShadow = shadow;
