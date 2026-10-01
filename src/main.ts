@@ -15,13 +15,18 @@ import { drawBubbles } from './ui/bubbles';
 import { bindImportFile } from './ui/modals/backup';
 import './ui/modals/packs';
 import './ui/modals/coll';
-import { moreHooks } from './ui/modals/soon';
-import { ui } from './ui/ctx';
+import { moreHooks } from './ui/modals/more';
+import './ui/modals/album';
+import './ui/modals/tasks';
+import { openM, ui } from './ui/ctx';
+import './ui/modals/summary';
+import { openCustomer } from './ui/modals/cust';
 import { paintNav } from './ui/nav';
 import { serveFront } from './ui/serve';
+import { tutTick } from './ui/tutorial';
 import { sfx } from './ui/sound';
 import { FLOOR_T, FRONT_Y, LAY, W } from './systems/layout';
-import { front } from './systems/customers';
+import { front, type Customer } from './systems/customers';
 import { openShop } from './systems/day';
 import { boot } from './core/boot';
 import { createGame, newGame } from './core/setup';
@@ -29,7 +34,6 @@ import { loadSaved } from './core/save';
 import { createLoop, type Loop } from './core/loop';
 import { stockForTest } from './core/sandbox';
 import type { Game, GameFx } from './core/game';
-import { fmt } from './core/format';
 import { FAILED } from './data/cards';
 
 const canvas = document.getElementById('world') as HTMLCanvasElement;
@@ -106,10 +110,9 @@ const fx: GameFx = {
   coins: () => {},
   shake: () => {},
   daySummary: () => {
-    // Ticket del día provisional (el ticket completo llega en la F4)
-    const s = game!.S.summary!;
-    toast(`🧾 Día ${s.day}: ${fmt(s.inc)} en caja · ${s.cust} clientes · ${s.lost} perdidos · alquiler ${fmt(s.rent)}`);
     loop?.saveNow();
+    refreshHud();
+    openM('sum');
   },
 };
 
@@ -138,7 +141,17 @@ cam.onTap = (ground) => {
   const g = game;
   if (!g) return;
   const p = toPx(ground), f = front(g);
-  if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) serveFront(g);
+  if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) return serveFront(g);
+  // Si no, la ficha del cliente más cercano al dedo
+  let best: Customer | null = null, bd = 30;
+  for (const c of g.custs) {
+    const d = Math.hypot(p.x - c.x, p.y - c.y);
+    if (d < bd) {
+      bd = d;
+      best = c;
+    }
+  }
+  if (best && !ui.M) openCustomer(best);
 };
 
 async function start(): Promise<void> {
@@ -204,6 +217,7 @@ renderer.setAnimationLoop((time) => {
     const dt = halted ? 0 : raw * game.speed;
     chars?.update(game, dt);
     if (chars) drawBubbles(game, chars.heads(iso.camera, canvas.clientWidth, canvas.clientHeight));
+    tutTick();
   }
   cam.update(raw);
   occ.setHidden(cam.mode !== 'city');

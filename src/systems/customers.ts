@@ -202,7 +202,7 @@ export function spawn(g: Game): Customer {
 }
 
 // Los habituales siempre tienen el mismo aspecto
-const lookOf = (reg: string): number => [...reg].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) % 1000;
+export const lookOf = (reg: string): number => [...reg].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) % 1000;
 
 export function leave(g: Game, c: Customer, angry: boolean): void {
   const S = g.S;

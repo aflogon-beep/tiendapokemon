@@ -59,3 +59,12 @@ export function claimables(g: Game): number {
   });
   return n;
 }
+
+/** Cobrar una misión completada */
+export function claimMission(g: Game, i: number): number {
+  const m = g.S.dm?.list[i];
+  if (!m || !m.done || m.cl) return 0;
+  m.cl = 1;
+  g.S.money += m.r;
+  return m.r;
+}

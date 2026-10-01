@@ -84,3 +84,17 @@ export function loadSetList(): Promise<ApiSet[] | null> {
     })
     .catch(() => (c ? c.sets : null));
 }
+
+/** Sets populares que se proponen añadir */
+export const RECO = ['base1', 'swsh7', 'swsh12pt5', 'sv4pt5', 'sv8'];
+
+/** Series con su número de sets, de la más reciente a la más antigua */
+export function seriesList(): { n: string; c: number; d: string }[] {
+  const m: Record<string, { n: string; c: number; d: string }> = {};
+  SETDEF.forEach((d) => {
+    if (!d.series) return;
+    (m[d.series] ??= { n: d.series, c: 0, d: '' }).c++;
+    if ((d.date || '') > m[d.series].d) m[d.series].d = d.date || '';
+  });
+  return Object.values(m).sort((a, b) => b.d.localeCompare(a.d));
+}

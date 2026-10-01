@@ -1,6 +1,8 @@
 import type { Game } from '../core/game';
 import { fmt } from '../core/format';
 import { caseItems, DAYLEN, level, netWorth, repv, sealedCount, tierOf } from '../systems/economy';
+import { openM, ui } from './ctx';
+import { tierUi } from './modals/summary';
 import { evLabel } from '../systems/events';
 import { front } from '../systems/customers';
 import { navAct, paintNav } from './nav';
@@ -10,6 +12,7 @@ import { navAct, paintNav } from './nav';
 const $ = (id: string) => document.getElementById(id)!;
 let shown: number | null = null;
 let lastPaused = false;
+let pendTier: number | null = null;
 
 export function showHud(): void {
   $('hud').hidden = false;
@@ -25,7 +28,19 @@ export function hud(g: Game, note: string): void {
   } else navAct();
   shown ??= S.money;
   $('money').innerHTML = fmt(shown) + '<small>capital</small>';
-  document.documentElement.dataset.tier = String(tierOf(level(g)));
+  // Subida de categoría: pantalla de celebración en cuanto no haya un panel abierto
+  const tr = tierOf(level(g));
+  if (S.tierSeen == null) S.tierSeen = tr;
+  if (tr > S.tierSeen) {
+    S.tierSeen = tr;
+    pendTier = tr;
+  }
+  if (pendTier != null && !ui.M) {
+    tierUi.show = pendTier;
+    pendTier = null;
+    openM('tierup');
+  }
+  document.documentElement.dataset.tier = String(tr);
   $('lv').textContent = `Nivel ${level(g)} · Día ${S.day} · ⭐ ${repv(S)} · Empresa ${fmt(netWorth(g))}`;
   ($('clk') as HTMLElement).style.width = (S.phase === 'closed' ? 0 : Math.min(100, (S.clock / DAYLEN) * 100)) + '%';
   const a = $('act') as HTMLButtonElement, f = front(g);

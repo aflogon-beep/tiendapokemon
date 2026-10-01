@@ -9,7 +9,9 @@ import { CT, type Customer } from '../systems/customers';
  * El mundo solo lee el estado (posición, situación) y elige animación y orientación.
  */
 
-const MODELS = ['a', 'b', 'c', 'd', 'e', 'f'].flatMap((l) => [`character-female-${l}`, `character-male-${l}`]);
+export const MODELS = ['a', 'b', 'c', 'd', 'e', 'f'].flatMap((l) => [`character-female-${l}`, `character-male-${l}`]);
+/** Modelo de Mini Characters para una variante visual de cliente */
+export const modelFor = (look: number): string => MODELS[look % MODELS.length];
 const WALK_ANIM_SPEED = 1.2; // m/s a los que la animación walk no patina
 const TURN = 10;
 
@@ -28,11 +30,12 @@ export interface Characters {
 }
 
 export async function createCharacters(scene: THREE.Scene): Promise<Characters> {
-  await preload('characters', MODELS);
+  // La dependienta también hace falta para el retrato de Carla en el tutorial
+  await Promise.all([preload('characters', MODELS), preload('market', ['character-employee'])]);
   const views = new Map<number, View>();
 
   const create = (c: Customer): View => {
-    const inst = spawnLoaded('characters', MODELS[c.look % MODELS.length]);
+    const inst = spawnLoaded('characters', modelFor(c.look));
     inst.root.scale.multiplyScalar(CT[c.type].sc);
     inst.root.position.copy(toWorld(c.x, c.y));
     scene.add(inst.root);
