@@ -1,0 +1,33 @@
+{
+  "name": "tiendapokemon",
+  "version": "1.0.0",
+  "description": "Pokémon Card Shop 3D",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host",
+    "test": "vitest run",
+    "typecheck": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aflogon-beep/tiendapokemon.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aflogon-beep/tiendapokemon/issues"
+  },
+  "homepage": "https://github.com/aflogon-beep/tiendapokemon#readme",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.3"
+  },
+  "private": true,
+  "type": "module"
+}
