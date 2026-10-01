@@ -37,7 +37,7 @@ html, body {
 .zb {
   position: fixed;
   right: 8px;
-  top: calc(max(8px, env(safe-area-inset-top)) + 64px);
+  top: calc(var(--hudh, 0px) + max(8px, env(safe-area-inset-top)));
   display: flex;
   flex-direction: column;
   gap: 6px;

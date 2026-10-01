@@ -7,13 +7,18 @@ import { createOccluders } from './world/occluders';
 import { buildShop, toPx, toWorld } from './world/shop';
 import { buildCity, CITY_BOUNDS, FAR_SIDEWALK } from './world/city';
 import { createCharacters, type Characters } from './world/characters';
-import { mountZoomButtons } from './ui/zoomButtons';
+import { cycleCamera, mountZoomButtons } from './ui/zoomButtons';
 import { toast } from './ui/toast';
 import { hideLoading, loadingText, askOfflineWithRealSave } from './ui/loading';
 import { hud, showHud, tickMoney } from './ui/hud';
 import { drawBubbles } from './ui/bubbles';
-import { bindImportFile, openBackup, type BackupDeps } from './ui/modals/backup';
-import { isModalOpen } from './ui/modal';
+import { bindImportFile } from './ui/modals/backup';
+import './ui/modals/packs';
+import './ui/modals/coll';
+import { moreHooks } from './ui/modals/soon';
+import { ui } from './ui/ctx';
+import { paintNav } from './ui/nav';
+import { sfx } from './ui/sound';
 import { FLOOR_T, FRONT_Y, LAY, W } from './systems/layout';
 import { front, pay, dismiss, serveAction, type Customer } from './systems/customers';
 import { openShop } from './systems/day';
@@ -72,17 +77,20 @@ function resize(): void {
 
 // La cámara encuadra el hueco entre la cabecera y el panel de abajo
 function fitInsets(): void {
-  const hudEl = document.getElementById('hud')!, dock = document.getElementById('dock')!;
-  iso.setInsets(hudEl.hidden ? 0 : hudEl.offsetHeight, dock.hidden ? 0 : dock.offsetHeight);
+  const hudEl = document.getElementById('hud')!, dock = document.getElementById('dock')!, nav = document.getElementById('nav')!;
+  // El panel de ayuda y el botón principal van justo encima de la barra inferior
+  document.documentElement.style.setProperty('--navh', (nav.hidden ? 0 : nav.offsetHeight) + 'px');
+  document.documentElement.style.setProperty('--hudh', (hudEl.hidden ? 0 : hudEl.offsetHeight) + 'px');
+  iso.setInsets(hudEl.hidden ? 0 : hudEl.offsetHeight, dock.hidden ? 0 : window.innerHeight - dock.getBoundingClientRect().top);
 }
 const insetObserver = new ResizeObserver(fitInsets);
-insetObserver.observe(document.getElementById('hud')!);
-insetObserver.observe(document.getElementById('dock')!);
+for (const id of ['hud', 'dock', 'nav']) insetObserver.observe(document.getElementById(id)!);
 window.addEventListener('resize', resize);
 resize();
 
 const cam = createCamController(canvas, iso, presets);
 mountZoomButtons(cam);
+moreHooks.zfit = () => cycleCamera(cam);
 
 /* ---------- partida ---------- */
 
@@ -92,7 +100,7 @@ let note = '';
 
 const fx: GameFx = {
   toast,
-  sound: () => {}, // los sonidos llegan en la F5
+  sound: (s) => sfx[s](),
   hearts: () => {},
   coins: () => {},
   shake: () => {},
@@ -137,9 +145,7 @@ function onAct(): void {
 }
 document.getElementById('act')!.addEventListener('click', onAct);
 
-const backupDeps: BackupDeps = { game: () => game, saveNow: () => loop?.saveNow() ?? false, refresh: () => refreshHud() };
-document.getElementById('savebtn')!.addEventListener('click', () => openBackup(backupDeps));
-bindImportFile(backupDeps);
+bindImportFile();
 
 // Tocar al cliente que espera en la caja también le atiende (tapWorld de la v10)
 cam.onTap = (ground) => {
@@ -163,6 +169,9 @@ async function start(): Promise<void> {
   const vel = Number(params.get('vel'));
   if ([1, 2, 4].includes(vel)) g.speed = vel;
   game = g;
+  ui.g = g;
+  ui.note = note;
+  ui.hud = () => void refreshHud();
   chars = await createCharacters(scene);
   // Dependienta en reposo tras el mostrador
   const mixer = new THREE.AnimationMixer(shop.cashier.root);
@@ -171,9 +180,11 @@ async function start(): Promise<void> {
   mixers.push(mixer);
 
   loop = createLoop(g, { save: !testMode, onHud: refreshHud, onSaveFail: () => toast('⚠️ No se pudo guardar. Exporta una copia en Más → Partida') });
+  ui.saveNow = () => loop!.saveNow();
   loop.saveNow();
   hideLoading();
   showHud();
+  paintNav();
   refreshHud();
   fitInsets();
   if (saved?.from === 'v10') toast('✅ Partida de la versión anterior cargada');
@@ -201,8 +212,8 @@ renderer.setAnimationLoop((time) => {
   const real = timer.getDelta();
   const raw = Math.min(real, 0.1);
   if (game && loop) {
-    const halted = game.paused || isModalOpen();
-    if (!isModalOpen()) loop.frame(raw);
+    const halted = game.paused || !!ui.M;
+    if (!ui.M) loop.frame(raw);
     tickMoney(game, raw);
     const dt = halted ? 0 : raw * game.speed;
     chars?.update(game, dt);
