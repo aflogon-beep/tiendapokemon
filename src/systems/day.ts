@@ -1,6 +1,6 @@
 import { pick, rand, rnd } from '../core/rng';
 import type { Game } from '../core/game';
-import { anyoneInside, spawn, updateCusts } from './customers';
+import { anyoneInside, LAUNCH_Q, launchSpot, spawn, updateCusts } from './customers';
 import { DAYLEN, netWorth, RENT, repv, spMul, STAFF, step, VOL } from './economy';
 import { rollGrade } from './grading';
 import { checkAch } from './achievements';
@@ -16,12 +16,15 @@ const CLOSE_DELAY = 1.4; // segundos entre que sale el último cliente y se baja
 export interface DayTimers {
   /** Cuenta atrás para cerrar cuando la tienda se ha vaciado */
   endIn: number | null;
+  /** Clientes de la cola de lanzamiento que faltan por entrar */
+  lq: number;
+  lqT: number;
 }
 
 export const dayTimers = new WeakMap<Game, DayTimers>();
 const timers = (g: Game): DayTimers => {
   let t = dayTimers.get(g);
-  if (!t) dayTimers.set(g, (t = { endIn: null }));
+  if (!t) dayTimers.set(g, (t = { endIn: null, lq: 0, lqT: 0 }));
   return t;
 };
 
@@ -32,7 +35,13 @@ export function openShop(g: Game): void {
   S.phase = 'open';
   S.clock = 0;
   g.spawnT = 1;
-  S.burst = S.ev?.t === 'launch' ? 6 : 0;
+  // Día de lanzamiento: entra la cola que esperaba en la acera (en lugar de la ráfaga de 6)
+  const launch = S.ev?.t === 'launch';
+  S.burst = 0;
+  const t = timers(g);
+  t.lq = launch ? LAUNCH_Q : 0;
+  t.lqT = 0.25;
+  if (launch) g.fx.shake(5);
   S.vipDone = false;
   S.stats = { inc: 0, cust: 0, lost: 0, bought: 0 };
 }
@@ -42,6 +51,14 @@ export function tickDay(g: Game, dt: number): void {
   const S = g.S;
   if (S.phase === 'open') {
     S.clock += dt;
+    const t = timers(g);
+    if (t.lq > 0 && (t.lqT -= dt) <= 0) {
+      const c = spawn(g), p = launchSpot(LAUNCH_Q - t.lq);
+      c.x = p.x;
+      c.y = p.y;
+      t.lq--;
+      t.lqT = 0.26;
+    }
     g.spawnT -= dt;
     if (g.spawnT <= 0) {
       spawn(g);

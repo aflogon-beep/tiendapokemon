@@ -189,3 +189,18 @@ describe('un día completo', () => {
     expect(g.S.lt.served).toBeGreaterThan(0);
   });
 });
+
+describe('cola de lanzamiento', () => {
+  it('el día de lanzamiento entran los 8 de la cola desde la acera', () => {
+    const g = testGame();
+    stockForTest(g);
+    g.S.ev = { t: 'launch', s: g.S.sets[0] };
+    openShop(g);
+    expect(g.S.burst).toBe(0);
+    for (let i = 0; i < 40; i++) tickDay(g, 0.1);
+    // Los 8 de la cola y, como mucho, algún cliente normal
+    expect(g.S.stats.cust).toBeGreaterThanOrEqual(8);
+    const first = g.custs.find((c) => c.id === 1)!;
+    expect(first).toBeTruthy();
+  });
+});

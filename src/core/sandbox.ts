@@ -1,5 +1,6 @@
 import type { Game } from './game';
-import { DECOR, caseCap, itemVal } from '../systems/economy';
+import { DAYLEN, DECOR, caseCap, itemVal } from '../systems/economy';
+import { openShop } from '../systems/day';
 import { createShopNav } from '../systems/shopNav';
 import { assignSlots, roll } from '../systems/packs';
 
@@ -38,4 +39,18 @@ export function decorForTest(g: Game, money: number | null): void {
   S.prod['acc:sleeves'] = S.prod['acc:dice'] = 3;
   if (money != null) S.money = money;
   g.nav = createShopNav(caseCap(S), S.decor);
+}
+
+/** ?prueba&evento=rain|launch|vip, &temporada=xmas…, &torneo, &hora=0–1 (abre la tienda a esa hora) */
+export function worldForTest(g: Game, q: URLSearchParams): void {
+  const S = g.S, ev = q.get('evento');
+  if (ev === 'launch') S.ev = { t: 'launch', s: S.sets[0] };
+  else if (ev === 'rain' || ev === 'vip') S.ev = { t: ev };
+  if (q.get('temporada')) S.season = q.get('temporada')!;
+  if (q.has('torneo')) S.decor.table = 1, (S.tour = true);
+  const h = q.get('hora');
+  if (h != null) {
+    openShop(g);
+    S.clock = Number(h) * DAYLEN;
+  }
 }
