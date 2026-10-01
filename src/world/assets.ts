@@ -58,7 +58,14 @@ const UP = new THREE.Vector3(0, 1, 0);
  * Muchas copias de un modelo estático (baldosas, paredes…) con InstancedMesh:
  * una llamada de dibujo por malla del modelo en lugar de una por copia.
  */
-export async function spawnInstanced(pack: Pack, name: string, places: Placement[]): Promise<THREE.Group> {
+export interface InstanceOpts {
+  /** Mallas que no se copian (p. ej. los productos de fábrica de una estantería) */
+  skip?: (name: string) => boolean;
+  /** Material propio (para teñirlo sin afectar al resto del pack) */
+  ownMaterial?: boolean;
+}
+
+export async function spawnInstanced(pack: Pack, name: string, places: Placement[], opts: InstanceOpts = {}): Promise<THREE.Group> {
   const gltf = await loadGltf(pack, name);
   const group = new THREE.Group();
   group.name = `${pack}/${name}×${places.length}`;
@@ -66,8 +73,9 @@ export async function spawnInstanced(pack: Pack, name: string, places: Placement
   const scale = PACK_SCALE[pack];
   gltf.scene.traverse((o) => {
     const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh) return;
-    const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, places.length);
+    if (!mesh.isMesh || opts.skip?.(mesh.name)) return;
+    const mat = opts.ownMaterial ? (mesh.material as THREE.Material).clone() : mesh.material;
+    const inst = new THREE.InstancedMesh(mesh.geometry, mat, places.length);
     inst.castShadow = mesh.castShadow;
     inst.receiveShadow = mesh.receiveShadow;
     places.forEach((p, i) => {

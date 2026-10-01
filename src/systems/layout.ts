@@ -102,3 +102,38 @@ export function queueSpot(i: number): Point {
 }
 
 export const ENTRANCE: Point = { x: (DOOR.x0 + DOOR.x1) / 2, y: FRONT_Y + 40 };
+
+/*
+ * Decoración (v10: decorObjs, drawLux). Posiciones de la v10 ajustadas para que en 3D no
+ * pisen los puntos donde se paran los clientes ni la cola.
+ */
+export const DECOR_POS = {
+  /**
+   * Mesa de juego (v10: 140–336 × 276–330). Se baja y estrecha para no tapar la segunda fila de
+   * estanterías ni el pasillo central; las sillas van al sur y al oeste.
+   */
+  table: { x: 130, y: 304, w: 156, h: 48 } as Rect,
+  tableSeats: [{ x: 170, y: 370 }, { x: 246, y: 370 }, { x: 112, y: 316 }, { x: 112, y: 342 }] as Point[],
+  coffee: { x: 560, y: 282, w: 38, h: 24 } as Rect,
+  sofa: { x: 500, y: 488, w: 100, h: 30 } as Rect,
+  rug: { x: 262, y: 505 } as Point,
+  /** Plantas que da la decoración «Más plantas» y las que hay siempre */
+  plants: [{ x: 612, y: 228 }, { x: 22, y: 300 }, { x: 588, y: 470 }] as Point[],
+  basePlants: [{ x: 22, y: 490 }, { x: 778, y: 500 }, { x: 622, y: 136 }] as Point[],
+  /** Peanas de lujo */
+  lux: [{ x: 452, y: 452 }, { x: 512, y: 452 }, { x: 572, y: 452 }] as Point[],
+  neon: { x: 612, y: FLOOR_T } as Point,
+};
+
+const around = (p: Point, r: number): Rect => ({ x: p.x - r, y: p.y - r, w: r * 2, h: r * 2 });
+
+/** Obstáculos que añade la decoración comprada */
+export function decorObstacles(decor: Record<string, unknown>): Rect[] {
+  const l: Rect[] = DECOR_POS.basePlants.map((p) => around(p, 12));
+  if (decor.table) l.push(DECOR_POS.table, ...DECOR_POS.tableSeats.map((p) => around(p, 8)));
+  if (decor.coffee) l.push(DECOR_POS.coffee);
+  if (decor.sofa) l.push(DECOR_POS.sofa);
+  if (decor.plants) l.push(...DECOR_POS.plants.map((p) => around(p, 12)));
+  if (decor.lux) l.push(...DECOR_POS.lux.map((p) => around(p, 17)));
+  return l;
+}

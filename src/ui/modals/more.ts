@@ -26,11 +26,22 @@ defModal('more', {
       `<button class="b" data-a="m" data-k="up">🛠️ Mejoras y personal</button><button class="b" data-a="m" data-k="grading">🔍 Gradeo${S.grNew?.length ? ' · 📬' : ''}</button>` +
       `<button class="b" data-a="m" data-k="backup">💾 Partida y copia</button><button class="b" data-a="sndtog">${audio.on ? '🔊 Sonido: sí' : '🔇 Sonido: no'}</button>` +
       `<button class="b" data-a="mustog">🎵 Música: ${audio.music ? 'sí' : 'no'}</button><button class="b" data-a="tutre">🎓 Repetir tutorial</button>` +
-      `<button class="b" data-a="zreset">⤢ Ver toda la tienda</button><button class="b" data-a="seastog">🗓️ ${SEAS[se]}${se === 'auto' ? ' · ' + SEAS[season(S)] : ''}</button></div>` +
+      `<button class="b" data-a="zreset">⤢ Ver toda la tienda</button><button class="b" data-a="seastog">🗓️ ${SEAS[se]}${se === 'auto' ? ' · ' + SEAS[season(S)] : ''}</button>` +
+      `<button class="b" data-a="m" data-k="credits">ℹ️ Créditos</button></div>` +
       `<div class="pn" style="margin-top:10px"><div class="row"><span>⭐ Reputación</span><b>${repv(S)}</b></div>` +
       `<div class="mu">Sube vendiendo, con encargos, torneos y el álbum. Más reputación = más clientes.</div></div>`
     );
   },
+});
+
+// Créditos: assets de Kenney (CC0), datos de cartas y librerías
+defModal('credits', {
+  body: () =>
+    `<h2>Créditos</h2>` +
+    `<div class="pn"><b>Modelos 3D</b><div class="mu">Mini Market, Mini Characters y City Kit Commercial de <b>Kenney</b> (kenney.nl), con licencia CC0. ¡Gracias, Kenney!</div></div>` +
+    `<div class="pn"><b>Cartas y precios</b><div class="mu">Imágenes y datos de <b>pokemontcg.io</b>; precios de mercado de <b>Cardmarket</b>.</div></div>` +
+    `<div class="pn"><b>Tecnología</b><div class="mu"><b>three.js</b> para el mundo 3D y la tipografía <b>Fredoka</b> (Google Fonts).</div></div>` +
+    `<p class="mu">Juego hecho por fans, sin relación con The Pokémon Company, Nintendo, Game Freak ni Creatures. Pokémon y sus nombres son marcas de sus propietarios.</p>`,
 });
 
 A.sndtog = () => {

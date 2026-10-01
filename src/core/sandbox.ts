@@ -1,5 +1,6 @@
 import type { Game } from './game';
-import { itemVal } from '../systems/economy';
+import { DECOR, caseCap, itemVal } from '../systems/economy';
+import { createShopNav } from '../systems/shopNav';
 import { assignSlots, roll } from '../systems/packs';
 
 /*
@@ -25,4 +26,16 @@ export function stockForTest(g: Game): void {
     .slice(0, 8)
     .forEach((it) => (it.case = 1.1));
   assignSlots(g);
+}
+
+/** ?prueba&deco: toda la decoración y el personal; ?prueba&dinero=N: dinero para ver otra categoría */
+export function decorForTest(g: Game, money: number | null): void {
+  const S = g.S;
+  for (const d of DECOR) S.decor[d.k] = 1;
+  S.staff.cashier = S.staff.appraiser = true;
+  const sid = g.sets[0]?.id;
+  if (sid) for (const t of ['box', 'etb', 'tin', 'col']) S.prod[`${t}:${sid}`] = 2;
+  S.prod['acc:sleeves'] = S.prod['acc:dice'] = 3;
+  if (money != null) S.money = money;
+  g.nav = createShopNav(caseCap(S), S.decor);
 }

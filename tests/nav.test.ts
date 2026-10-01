@@ -51,3 +51,15 @@ describe('navegación en la tienda', () => {
     expect(Math.abs(x - ENTRANCE.x)).toBeLessThan(40);
   });
 });
+
+describe('con toda la decoración', () => {
+  const decor = { table: 1, coffee: 1, sofa: 1, plants: 1, lux: 1 };
+  const g2 = createShopNav(16, decor);
+  it('se sigue llegando a estanterías, vitrina y cola', () => {
+    const spots = [...Array.from({ length: SHELF_SLOTS }, (_, i) => shelfSpot(i)), caseSpot(16), queueSpot(0), queueSpot(7)];
+    for (const p of spots) {
+      expect(isFree(g2, p)).toBe(true);
+      expect(findPath(g2, street, p)).not.toBeNull();
+    }
+  });
+});

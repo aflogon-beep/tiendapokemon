@@ -77,7 +77,7 @@ export function ensure(g: Game): void {
   if (!S.orders.length && S.day <= 1) genOrder(g);
   if (!S.dm || S.dm.day !== S.day) genMissions(g);
   // La vitrina crece con las mejoras: el camino de los clientes la rodea
-  g.nav = createShopNav(caseCap(S));
+  g.nav = createShopNav(caseCap(S), S.decor);
 }
 
 /** Carga las colecciones de una partida importada que aún no tenemos (loadSetsFor de la v10) */
