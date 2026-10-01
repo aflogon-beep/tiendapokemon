@@ -3,11 +3,13 @@ import { fmt } from '../core/format';
 import { caseItems, DAYLEN, level, netWorth, repv, sealedCount, tierOf } from '../systems/economy';
 import { evLabel } from '../systems/events';
 import { front } from '../systems/customers';
+import { navAct, paintNav } from './nav';
 
 /* HUD de la v10 (cabecera, reloj del día, ayuda y botón principal). Se completa en la F4. */
 
 const $ = (id: string) => document.getElementById(id)!;
 let shown: number | null = null;
+let lastPaused = false;
 
 export function showHud(): void {
   $('hud').hidden = false;
@@ -16,6 +18,11 @@ export function showHud(): void {
 
 export function hud(g: Game, note: string): void {
   const S = g.S;
+  // La pausa puede venir de fuera (al salir de la app): la barra se repinta
+  if (g.paused !== lastPaused) {
+    lastPaused = g.paused;
+    paintNav();
+  } else navAct();
   shown ??= S.money;
   $('money').innerHTML = fmt(shown) + '<small>capital</small>';
   document.documentElement.dataset.tier = String(tierOf(level(g)));

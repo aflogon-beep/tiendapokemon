@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./src/ui/styles/base.css" />
+    <link rel="stylesheet" href="./src/ui/styles/v10.css" />
     <link rel="stylesheet" href="./src/ui/styles/theme.css" />
   </head>
   <body>
@@ -17,7 +18,7 @@
     <div id="bubbles"></div>
     <div id="hud" hidden>
       <div><b>Pokémon Card Shop</b><small id="lv"></small></div>
-      <div class="hr"><button class="hb" id="savebtn" aria-label="Partida: guardar, exportar e importar">💾</button><div id="money"></div></div>
+      <div class="hr"><button class="hb" data-a="savebtn" aria-label="Guardar partida">💾</button><div id="money"></div></div>
       <div class="bar"><i id="clk"></i></div>
     </div>
     <div id="dock" hidden>
@@ -25,6 +26,8 @@
       <button id="act"></button>
     </div>
     <div id="debug" aria-live="polite"></div>
+    <nav id="nav" hidden></nav>
+    <div id="ovh"></div>
     <input type="file" id="impfile" accept=".json,application/json,text/plain" hidden />
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -1,6 +1,7 @@
 import { shuffle } from '../core/rng';
 import type { Game } from '../core/game';
-import { checkAch } from './achievements';
+import { ALBR, albPct, checkAch } from './achievements';
+import { ownFor } from './orders';
 
 /* Misiones del día y contadores de por vida (v10) */
 
@@ -43,4 +44,18 @@ export function track(g: Game, k: string, v = 1): void {
     }
   });
   checkAch(g);
+}
+
+/** Cosas pendientes de cobrar o entregar (punto rojo en «Tareas») */
+export function claimables(g: Game): number {
+  const S = g.S;
+  let n = S.dm ? S.dm.list.filter((m) => m.done && !m.cl).length : 0;
+  n += S.orders.filter((o) => ownFor(g, o)).length;
+  S.sets.forEach((s) => {
+    const p = albPct(g, s), c = S.albR[s] || [];
+    ALBR.forEach(([t], i) => {
+      if (p >= t && !c.includes(i)) n++;
+    });
+  });
+  return n;
 }
