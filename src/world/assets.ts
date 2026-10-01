@@ -88,7 +88,23 @@ export interface ModelInstance {
 
 /** Devuelve una copia del modelo ya escalada a metros (geometría y materiales compartidos). */
 export async function spawnModel(pack: Pack, name: string): Promise<ModelInstance> {
-  const gltf = await loadGltf(pack, name);
+  return instantiate(pack, name, await loadGltf(pack, name));
+}
+
+const loaded = new Map<string, GLTF>();
+
+/** Carga varios modelos para poder copiarlos después sin esperar (spawnLoaded) */
+export async function preload(pack: Pack, names: string[]): Promise<void> {
+  await Promise.all(names.map((n) => loadGltf(pack, n).then((g) => loaded.set(assetUrl(pack, n), g))));
+}
+
+export function spawnLoaded(pack: Pack, name: string): ModelInstance {
+  const gltf = loaded.get(assetUrl(pack, name));
+  if (!gltf) throw new Error(`Modelo sin precargar: ${pack}/${name}`);
+  return instantiate(pack, name, gltf);
+}
+
+function instantiate(pack: Pack, name: string, gltf: GLTF): ModelInstance {
   const skinned = gltf.animations.length > 0;
   const model = skinned ? cloneSkinned(gltf.scene) : gltf.scene.clone(true);
   // Envoltorio: la escala del pack va aquí y el modelo conserva la suya

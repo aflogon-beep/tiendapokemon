@@ -1,0 +1,196 @@
+/* Tema de la v10: colores por nivel de tienda, tipografía y botones */
+:root {
+  --bg: #1b1f2a;
+  --panel: #252b3a;
+  --panel2: #2f3648;
+  --ink: #eef1f7;
+  --mu: #98a3b8;
+  --sign: #f2b705;
+  --signink: #2a2000;
+  --up: #4cc98a;
+  --down: #ff7a6b;
+  --line: #39415a;
+  --fd: 'Fredoka', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+}
+:root[data-tier='1'] { --sign: #4fb3ff; --signink: #05213a; --bg: #15202c; --panel: #1d2b3a; --panel2: #26384b; --line: #324a63; }
+:root[data-tier='2'] { --sign: #ff4a3d; --signink: #fff; --bg: #1c191e; --panel: #2a2327; --panel2: #382e33; --line: #4d3f45; }
+:root[data-tier='3'] { --sign: #d9b44a; --signink: #1a1406; --bg: #0e1321; --panel: #171f38; --panel2: #202a49; --line: #2f3b62; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { font-size: 15px; color: var(--ink); }
+button { font: inherit; color: inherit; cursor: pointer; }
+h2, h3, #hud b, #act, .b { font-family: var(--fd); }
+h2 { font-weight: 700; letter-spacing: 0.01em; }
+.mu { color: var(--mu); font-size: 13px; }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.b {
+  background: var(--panel2);
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 600;
+  min-height: 44px;
+  box-shadow: 0 3px 0 #0007, inset 0 1px 0 #ffffff14;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.15s;
+}
+.b:active { transform: translateY(2px); box-shadow: 0 1px 0 #0007; }
+.b.pri {
+  background: linear-gradient(color-mix(in srgb, var(--sign) 80%, #fff), var(--sign));
+  color: var(--signink);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--sign) 55%, #000), inset 0 1px 0 #fff6;
+}
+
+/* Pantalla de carga */
+#load {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+/* HUD (provisional hasta la F4): cabecera, reloj, ayuda y botón principal */
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  background: linear-gradient(color-mix(in srgb, var(--sign) 85%, #fff), var(--sign));
+  color: var(--signink);
+  box-shadow: inset 0 -3px 0 #0002;
+}
+#hud b { font-weight: 700; font-size: 19px; }
+#hud small { display: block; font-size: 12px; opacity: 0.8; }
+#money { font-family: var(--fd); font-size: 22px; font-weight: 700; text-align: right; }
+#money small { font-family: system-ui, sans-serif; font-weight: 400; }
+.bar { position: absolute; left: 0; right: 0; bottom: -5px; height: 5px; background: #0004; }
+.bar i { display: block; height: 100%; width: 0; background: var(--up); transition: width 0.25s linear; }
+
+#dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: 0 8px max(8px, env(safe-area-inset-bottom));
+}
+#hint {
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  color: var(--mu);
+  font-size: 13px;
+  min-height: 34px;
+  border-radius: 12px 12px 0 0;
+}
+#act {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 14px;
+  border-radius: 0 0 14px 14px;
+  font-weight: 700;
+  font-size: 18px;
+  min-height: 56px;
+  background: linear-gradient(color-mix(in srgb, var(--sign) 80%, #fff), var(--sign));
+  color: var(--signink);
+  box-shadow: inset 0 -4px 0 #0002;
+}
+#act:disabled { background: var(--panel2); color: var(--mu); }
+#act:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+#act.pulse { animation: pulse 1s infinite; }
+@keyframes pulse { 50% { filter: brightness(1.15); } }
+
+/* Bocadillos sobre los clientes */
+#bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 2; overflow: hidden; }
+.bub {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: #fff;
+  color: #111;
+  font: 700 13px system-ui, sans-serif;
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px #0005;
+}
+.bub::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-bottom: 0;
+  border-top-color: #fff;
+}
+.tag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: #000a;
+  color: #fff;
+  font: 700 10px system-ui, sans-serif;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+.pat { position: absolute; transform: translate(-50%, 0); width: 28px; height: 4px; background: #0007; border-radius: 2px; }
+.pat i { display: block; height: 100%; border-radius: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #act.pulse { animation: none; }
+  .bar i { transition: none; }
+}
+
+/* Paneles (v10: .ov / .sheet / .pn) */
+.ov {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  background: var(--bg);
+  width: 100%;
+  max-width: 760px;
+  max-height: 90%;
+  overflow: auto;
+  border-radius: 16px 16px 0 0;
+  padding: 14px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  border: 1px solid var(--line);
+}
+.sheet h2 { margin: 4px 0 10px; }
+.pn { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.b.big { display: block; width: 100%; margin-top: 6px; min-height: 48px; }
+.inp {
+  width: 100%;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12px;
+  margin: 8px 0;
+  resize: vertical;
+}
+.ov.in { animation: ovin 0.22s ease-out; }
+.sheet.in { animation: shin 0.32s cubic-bezier(0.2, 1.1, 0.3, 1); }
+@keyframes ovin { from { opacity: 0; } }
+@keyframes shin { from { transform: translateY(40px); opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .sheet.in, .ov.in { animation: none; } }
+
+/* Botón de la cabecera (v10: .hb) */
+.hr { display: flex; align-items: center; gap: 10px; }
+.hb { background: #0002; border: 1px solid #0003; border-radius: 9px; min-width: 44px; min-height: 44px; font-size: 18px; }
