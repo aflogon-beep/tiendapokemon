@@ -16,6 +16,8 @@ export interface Occluders {
   addFade(obj: THREE.Object3D): void;
   setHidden(hidden: boolean): void;
   update(dt: number): void;
+  /** 0 = paredes enteras, 1 = recortadas */
+  readonly cut: number;
 }
 
 export function createOccluders(): Occluders {
@@ -42,6 +44,9 @@ export function createOccluders(): Occluders {
   };
 
   return {
+    get cut() {
+      return k;
+    },
     addWall(obj) {
       walls.push({ obj, base: obj.scale.y });
       apply();

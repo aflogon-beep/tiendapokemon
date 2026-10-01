@@ -9,6 +9,12 @@ import { buildCity, CITY_BOUNDS, FAR_SIDEWALK } from './world/city';
 import { createCharacters, type Characters } from './world/characters';
 import { createMerch, type Merch } from './world/merch';
 import { createDecor, type Decor } from './world/decor';
+import { createDayNight } from './world/daynight';
+import { createStreet, type Street } from './world/street';
+import { createWeather } from './world/weather';
+import { createFacade } from './world/facade';
+import { createSeasonal } from './world/seasonal';
+import { createCrowd, type Crowd } from './world/crowd';
 import { cycleCamera, mountZoomButtons } from './ui/zoomButtons';
 import { toast } from './ui/toast';
 import { hideLoading, loadingText, askOfflineWithRealSave } from './ui/loading';
@@ -34,7 +40,7 @@ import { boot } from './core/boot';
 import { createGame, newGame } from './core/setup';
 import { loadSaved } from './core/save';
 import { createLoop, type Loop } from './core/loop';
-import { decorForTest, stockForTest } from './core/sandbox';
+import { decorForTest, stockForTest, worldForTest } from './core/sandbox';
 import type { Game, GameFx } from './core/game';
 import { FAILED } from './data/cards';
 
@@ -47,8 +53,13 @@ debug.hidden = !showDebug;
 
 const { renderer, scene } = createWorld(canvas);
 const iso = createIsoCamera();
-const sun = createLighting(scene);
+const lights = createLighting(scene);
+const sun = lights.sun;
 const occ = createOccluders();
+const dayNight = createDayNight(scene, lights);
+const weather = createWeather(scene, renderer.getPixelRatio());
+const facade = createFacade(scene, occ);
+const seasonal = createSeasonal(scene);
 
 // Esquinas (en px de la v10) de lo que encuadra cada vista; incluye algo de altura
 const box = (x0: number, y0: number, x1: number, y1: number, h: number) =>
@@ -105,6 +116,8 @@ let loop: Loop | null = null;
 let chars: Characters | null = null;
 let merch: Merch | null = null;
 let decor: Decor | null = null;
+let street: Street | null = null;
+let crowd: Crowd | null = null;
 let note = '';
 
 const fx: GameFx = {
@@ -168,6 +181,7 @@ async function start(): Promise<void> {
   const saved = testMode ? null : loadSaved(cards.mode);
   const g = saved ? createGame(saved.S, cards.db, cards.mode, fx) : newGame(cards.db, cards.mode, fx);
   if (testMode) stockForTest(g);
+  if (testMode) worldForTest(g, params);
   if (testMode && params.has('deco')) decorForTest(g, params.has('dinero') ? Number(params.get('dinero')) : null);
   // Velocidad del juego (1×, 2× o 4× como en la v10; el botón llega en la F4)
   const vel = Number(params.get('vel'));
@@ -183,6 +197,8 @@ async function start(): Promise<void> {
   if (idle) mixer.clipAction(idle).play();
   mixers.push(mixer);
   merch = createMerch(scene);
+  street = createStreet(scene);
+  crowd = createCrowd(scene);
   decor = createDecor(scene, shop);
 
   loop = createLoop(g, { save: !testMode, onHud: refreshHud, onSaveFail: () => toast('⚠️ No se pudo guardar. Exporta una copia en Más → Partida') });
@@ -225,6 +241,12 @@ renderer.setAnimationLoop((time) => {
     chars?.update(game, dt);
     merch?.update(game, raw);
     decor?.update(game, raw);
+    dayNight.update(game, raw);
+    street?.update(game, raw, dayNight.night);
+    crowd?.update(game, raw, time / 1000);
+    facade.update(game, raw);
+    seasonal.update(game, time / 1000);
+    weather.update(game, raw, iso.view.target, iso.view.size, canvas.clientHeight / ((iso.camera.top - iso.camera.bottom) / iso.camera.zoom));
     if (chars) drawBubbles(game, chars.heads(iso.camera, canvas.clientWidth, canvas.clientHeight));
     tutTick();
   }

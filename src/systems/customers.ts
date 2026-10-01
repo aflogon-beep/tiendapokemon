@@ -99,7 +99,11 @@ export interface Customer {
 }
 
 /* --- coordenadas de la calle: la acera de la v10 (y 570–612) se estira a la nuestra --- */
-const streetY = (v10y: number): number => SIDEWALK.y0 + ((v10y - 570) / 42) * (SIDEWALK.y1 - SIDEWALK.y0);
+export const streetY = (v10y: number): number => SIDEWALK.y0 + ((v10y - 570) / 42) * (SIDEWALK.y1 - SIDEWALK.y0);
+
+/** Puesto i (0–7) de la cola de lanzamiento en la acera (launchQ de la v10) */
+export const launchSpot = (i: number): Point => ({ x: 420 + i * 34, y: streetY(590 + (i % 2) * 10) });
+export const LAUNCH_Q = 8;
 
 export const say = (c: Customer, t: string): void => {
   c.bub = t;
