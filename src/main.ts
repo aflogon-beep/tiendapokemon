@@ -4,17 +4,33 @@ import { createIsoCamera, type View } from './world/camera';
 import { createLighting, followSun } from './world/lighting';
 import { createCamController } from './world/controls';
 import { createOccluders } from './world/occluders';
-import { buildShop, toWorld } from './world/shop';
+import { buildShop, toPx, toWorld } from './world/shop';
 import { buildCity, CITY_BOUNDS, FAR_SIDEWALK } from './world/city';
-import { createDemo, type Demo } from './world/demo';
+import { createCharacters, type Characters } from './world/characters';
 import { mountZoomButtons } from './ui/zoomButtons';
-import { createShopNav } from './systems/shopNav';
+import { toast } from './ui/toast';
+import { hideLoading, loadingText, askOfflineWithRealSave } from './ui/loading';
+import { hud, showHud, tickMoney } from './ui/hud';
+import { drawBubbles } from './ui/bubbles';
+import { bindImportFile, openBackup, type BackupDeps } from './ui/modals/backup';
+import { isModalOpen } from './ui/modal';
 import { FLOOR_T, FRONT_Y, LAY, W } from './systems/layout';
+import { front, pay, dismiss, serveAction, type Customer } from './systems/customers';
+import { openShop } from './systems/day';
+import { boot } from './core/boot';
+import { createGame, newGame } from './core/setup';
+import { loadSaved } from './core/save';
+import { createLoop, type Loop } from './core/loop';
+import { stockForTest } from './core/sandbox';
+import type { Game, GameFx } from './core/game';
+import { fmt } from './core/format';
+import { FAILED } from './data/cards';
 
 const canvas = document.getElementById('world') as HTMLCanvasElement;
 const debug = document.getElementById('debug') as HTMLDivElement;
 const params = new URLSearchParams(location.search);
 const showDebug = params.has('debug');
+const testMode = params.has('prueba');
 debug.hidden = !showDebug;
 
 const { renderer, scene } = createWorld(canvas);
@@ -27,14 +43,14 @@ const box = (x0: number, y0: number, x1: number, y1: number, h: number) =>
   [toWorld(x0, y0), toWorld(x1, y0), toWorld(x0, y1), toWorld(x1, y1)].flatMap((p) => [p, p.clone().setY(h)]);
 const SHOP_BOX = box(0, FLOOR_T - 30, W, FRONT_Y + 60, 2.4);
 const CITY_BOX = box(-500, FLOOR_T - 200, W + 500, FAR_SIDEWALK.y1, 8);
-const CASHIER_BOX = box(LAY.qx - 150, LAY.counter.y - 40, W, LAY.counter.y + LAY.counter.h, 2);
+const CASHIER_BOX = box(LAY.qx - 260, LAY.counter.y - 60, W, LAY.counter.y + LAY.counter.h + 40, 2);
 const b0 = toWorld(CITY_BOUNDS.x0 + 400, CITY_BOUNDS.y0 + 200), b1 = toWorld(CITY_BOUNDS.x1 - 400, CITY_BOUNDS.y1 - 200);
 
-// Sin clientes todavía (F3). La automática encuadra la tienda un poco más cerca que «toda la
-// tienda» (o la caja si hay cliente delante); en horizontal llena la pantalla como el «cover» de la v10
-const hasFront = () => false;
+let game: Game | null = null;
+
+// Cámara automática: la tienda, o la caja cuando hay alguien esperando (camFollow de la v10)
 const autoView = (): View => {
-  if (hasFront()) return iso.frame(CASHIER_BOX);
+  if (game && front(game)) return iso.frame(CASHIER_BOX);
   const fit = iso.frame(SHOP_BOX), cover = iso.frame(SHOP_BOX, true);
   return { target: fit.target, size: Math.max(cover.size, fit.size * 0.8) };
 };
@@ -53,47 +69,153 @@ function resize(): void {
   renderer.setSize(w, h, false);
   iso.resize(w, h);
 }
+
+// La cámara encuadra el hueco entre la cabecera y el panel de abajo
+function fitInsets(): void {
+  const hudEl = document.getElementById('hud')!, dock = document.getElementById('dock')!;
+  iso.setInsets(hudEl.hidden ? 0 : hudEl.offsetHeight, dock.hidden ? 0 : dock.offsetHeight);
+}
+const insetObserver = new ResizeObserver(fitInsets);
+insetObserver.observe(document.getElementById('hud')!);
+insetObserver.observe(document.getElementById('dock')!);
 window.addEventListener('resize', resize);
 resize();
 
 const cam = createCamController(canvas, iso, presets);
 mountZoomButtons(cam);
 
-let demo: Demo | null = null;
-if (params.has('f0')) scene.add(createGround(), new THREE.GridHelper(20, 20, '#4b5640', '#6b7a5a'));
-else
-  Promise.all([buildShop(scene, occ), buildCity(scene, occ)])
-    .then(async ([shop]) => {
-      demo = await createDemo(scene, createShopNav(), shop.door);
-      // Dependienta en reposo tras el mostrador
-      const mixer = new THREE.AnimationMixer(shop.cashier.root);
-      const idle = shop.cashier.animations.find((c) => c.name === 'idle');
-      if (idle) mixer.clipAction(idle).play();
-      mixers.push(mixer);
-    })
-    .catch((err) => {
-      console.error(err);
-      debug.hidden = false;
-      debug.textContent = `Error cargando assets: ${String(err)}`;
-    });
-const mixers: THREE.AnimationMixer[] = [];
+/* ---------- partida ---------- */
 
-// Bucle de render con contador de FPS (visible con ?debug)
+let loop: Loop | null = null;
+let chars: Characters | null = null;
+let note = '';
+
+const fx: GameFx = {
+  toast,
+  sound: () => {}, // los sonidos llegan en la F5
+  hearts: () => {},
+  coins: () => {},
+  shake: () => {},
+  daySummary: () => {
+    // Ticket del día provisional (el ticket completo llega en la F4)
+    const s = game!.S.summary!;
+    toast(`🧾 Día ${s.day}: ${fmt(s.inc)} en caja · ${s.cust} clientes · ${s.lost} perdidos · alquiler ${fmt(s.rent)}`);
+    loop?.saveNow();
+  },
+};
+
+const refreshHud = () => game && hud(game, note);
+
+/** Atender al primero de la cola (serveFront de la v10) */
+function serve(g: Game, c: Customer): void {
+  const a = serveAction(g, c);
+  if (a === 'sell' || a === 'lot') {
+    // Comprar cartas y lotes a clientes llega con sus paneles en la F4
+    dismiss(g, c);
+    toast(a === 'sell' ? 'Comprar cartas a clientes estará en la próxima fase' : 'Los lotes estarán en la próxima fase');
+  } else {
+    // Cobro directo por el total (la caja con efectivo, TPV y regateo llega en la F4)
+    pay(g, c);
+  }
+  refreshHud();
+}
+
+function onAct(): void {
+  const g = game;
+  if (!g) return;
+  if (g.paused) {
+    g.paused = false;
+    refreshHud();
+    return;
+  }
+  const f = front(g);
+  if (f) return serve(g, f);
+  if (g.S.phase === 'closed') {
+    openShop(g);
+    refreshHud();
+  }
+}
+document.getElementById('act')!.addEventListener('click', onAct);
+
+const backupDeps: BackupDeps = { game: () => game, saveNow: () => loop?.saveNow() ?? false, refresh: () => refreshHud() };
+document.getElementById('savebtn')!.addEventListener('click', () => openBackup(backupDeps));
+bindImportFile(backupDeps);
+
+// Tocar al cliente que espera en la caja también le atiende (tapWorld de la v10)
+cam.onTap = (ground) => {
+  const g = game;
+  if (!g) return;
+  const p = toPx(ground), f = front(g);
+  if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) serve(g, f);
+};
+
+async function start(): Promise<void> {
+  const [cards, shop] = await Promise.all([
+    boot({ progress: loadingText, askOffline: askOfflineWithRealSave }),
+    buildShop(scene, occ),
+    buildCity(scene, occ),
+  ]);
+  note = cards.note;
+  const saved = testMode ? null : loadSaved(cards.mode);
+  const g = saved ? createGame(saved.S, cards.db, cards.mode, fx) : newGame(cards.db, cards.mode, fx);
+  if (testMode) stockForTest(g);
+  // Velocidad del juego (1×, 2× o 4× como en la v10; el botón llega en la F4)
+  const vel = Number(params.get('vel'));
+  if ([1, 2, 4].includes(vel)) g.speed = vel;
+  game = g;
+  chars = await createCharacters(scene);
+  // Dependienta en reposo tras el mostrador
+  const mixer = new THREE.AnimationMixer(shop.cashier.root);
+  const idle = shop.cashier.animations.find((c) => c.name === 'idle');
+  if (idle) mixer.clipAction(idle).play();
+  mixers.push(mixer);
+
+  loop = createLoop(g, { save: !testMode, onHud: refreshHud, onSaveFail: () => toast('⚠️ No se pudo guardar. Exporta una copia en Más → Partida') });
+  loop.saveNow();
+  hideLoading();
+  showHud();
+  refreshHud();
+  fitInsets();
+  if (saved?.from === 'v10') toast('✅ Partida de la versión anterior cargada');
+  if (testMode) toast('🧪 Modo prueba: tienda llena y sin guardar');
+  if (FAILED.size) setTimeout(() => toast(`⚠️ ${FAILED.size} colección(es) no cargaron. Reinténtalo en Más → Colecciones`), 800);
+}
+
+const mixers: THREE.AnimationMixer[] = [];
+if (params.has('f0')) {
+  scene.add(createGround(), new THREE.GridHelper(20, 20, '#4b5640', '#6b7a5a'));
+  hideLoading();
+} else
+  start().catch((err) => {
+    console.error(err);
+    loadingText(`Error al arrancar: ${String(err)}`);
+  });
+
+/* ---------- render ---------- */
+
 const timer = new THREE.Timer();
 timer.connect(document);
 let frames = 0, acc = 0;
 renderer.setAnimationLoop((time) => {
   timer.update(time);
-  const dt = Math.min(timer.getDelta(), 0.1);
-  cam.update(dt);
+  const real = timer.getDelta();
+  const raw = Math.min(real, 0.1);
+  if (game && loop) {
+    const halted = game.paused || isModalOpen();
+    if (!isModalOpen()) loop.frame(raw);
+    tickMoney(game, raw);
+    const dt = halted ? 0 : raw * game.speed;
+    chars?.update(game, dt);
+    if (chars) drawBubbles(game, chars.heads(iso.camera, canvas.clientWidth, canvas.clientHeight));
+  }
+  cam.update(raw);
   occ.setHidden(cam.mode !== 'city');
-  occ.update(dt);
+  occ.update(raw);
   followSun(sun, iso.view.target, iso.view.size);
-  demo?.update(dt);
-  for (const m of mixers) m.update(dt);
+  for (const m of mixers) m.update(raw);
   renderer.render(scene, iso.camera);
   frames++;
-  acc += dt;
+  acc += real;
   if (showDebug && acc >= 0.5) {
     debug.textContent = `${Math.round(frames / acc)} fps · ${renderer.info.render.calls} draw calls · cámara ${cam.mode}`;
     frames = 0;

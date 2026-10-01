@@ -22,7 +22,7 @@ html, body {
 /* Panel de depuración (solo durante F0/F1) */
 #debug {
   position: fixed;
-  top: max(8px, env(safe-area-inset-top));
+  bottom: 140px;
   left: 8px;
   padding: 6px 10px;
   border-radius: 8px;
@@ -37,7 +37,7 @@ html, body {
 .zb {
   position: fixed;
   right: 8px;
-  top: max(8px, env(safe-area-inset-top));
+  top: calc(max(8px, env(safe-area-inset-top)) + 64px);
   display: flex;
   flex-direction: column;
   gap: 6px;

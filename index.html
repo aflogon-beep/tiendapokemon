@@ -5,11 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#1b1f2e" />
     <title>Pokémon Card Shop 3D</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./src/ui/styles/base.css" />
+    <link rel="stylesheet" href="./src/ui/styles/theme.css" />
   </head>
   <body>
+    <div id="load"><div><h2>Pokémon Card Shop</h2><p class="mu" id="loadtxt">Cargando cartas reales y precios de Cardmarket…</p></div></div>
     <canvas id="world"></canvas>
+    <div id="bubbles"></div>
+    <div id="hud" hidden>
+      <div><b>Pokémon Card Shop</b><small id="lv"></small></div>
+      <div class="hr"><button class="hb" id="savebtn" aria-label="Partida: guardar, exportar e importar">💾</button><div id="money"></div></div>
+      <div class="bar"><i id="clk"></i></div>
+    </div>
+    <div id="dock" hidden>
+      <div id="hint"></div>
+      <button id="act"></button>
+    </div>
     <div id="debug" aria-live="polite"></div>
+    <input type="file" id="impfile" accept=".json,application/json,text/plain" hidden />
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

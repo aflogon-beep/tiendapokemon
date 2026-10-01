@@ -116,7 +116,9 @@ export function findPath(g: NavGrid, from: Point, to: Point): Point[] | null {
   const cells: Point[] = [];
   for (let i = goal; i >= 0; i = i === start ? -1 : prev[i]) cells.push(center(g, i % g.cols, (i / g.cols) | 0));
   cells.reverse();
-  return smooth(g, [from, ...cells.slice(1, -1), to]);
+  // Si el destino cae dentro de un obstáculo se acaba en la celda libre más cercana
+  const end = goal === b.r * g.cols + b.c ? to : cells[cells.length - 1];
+  return smooth(g, [from, ...cells.slice(1, -1), end]);
 }
 
 /** ¿Se puede ir en línea recta de a a b sin pisar celdas bloqueadas? */
