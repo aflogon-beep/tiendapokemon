@@ -3,7 +3,10 @@ import { fmt } from '../../core/format';
 import { exportCode, exportStr, parseImport } from '../../core/save';
 import { blankState } from '../../core/state';
 import { loadSetsFor, replaceState, retrySets } from '../../core/setup';
-import { FAILED } from '../../data/cards';
+import { FAILED, type Card } from '../../data/cards';
+import { apiStatus } from '../../data/api';
+import { RAR } from '../../data/rarity';
+import { price } from '../../systems/economy';
 import { setName } from '../../data/sets';
 import { DEFAULT_SETS } from '../../data/sets';
 import { closeModal, openModal } from '../modal';
@@ -19,11 +22,30 @@ export interface BackupDeps {
 
 const when = (t?: number) => (t ? new Date(t).toLocaleString('es-ES') : '—');
 
+// Estado de las cartas: reales o sin conexión, cuántas y las más caras con su imagen
+function cardsInfo(g: Game): string {
+  const real = g.mode === 'real';
+  const top = g.db.cards
+    .filter((c: Card) => g.S.prices[c.id])
+    .sort((a, b) => price(g, b.id) - price(g, a.id))
+    .slice(0, 6);
+  const tile = (c: Card) =>
+    `<div class="ctile">${c.img ? `<img src="${c.img}" alt="${c.name}" loading="lazy">` : `<div class="cph" style="--rc:${RAR[c.r].c}">${c.name}</div>`}` +
+    `<span>${fmt(price(g, c.id))}</span></div>`;
+  return (
+    `<div class="pn"><b>${real ? '✅ Cartas reales con precios de Cardmarket' : '⚠️ Modo sin conexión (cartas ilustradas)'}</b>` +
+    `<div class="mu">${g.db.cards.length} cartas de ${g.sets.length} colecciones: ${g.sets.map((s) => s.n).join(', ')}.` +
+    `${!real && apiStatus.lastError ? ` Motivo: ${apiStatus.lastError}.` : ''} El panel para ver y vender tus cartas llega en la próxima fase.</div>` +
+    `<div class="ctiles">${top.map(tile).join('')}</div>` +
+    `${real ? '' : '<div class="btns"><button class="b pri" data-a="reload">🔄 Reintentar conexión</button></div>'}</div>`
+  );
+}
+
 export function openBackup(d: BackupDeps): void {
   const g = d.game();
   if (!g) return;
   const sheet = openModal(
-    `<h2>Partida</h2><div class="pn"><div>Se guarda sola cada 10 segundos, al cerrar y al terminar el día.</div>` +
+    `<h2>Partida</h2>` + cardsInfo(g) + `<div class="pn"><div>Se guarda sola cada 10 segundos, al cerrar y al terminar el día.</div>` +
       `<div class="mu">Último guardado: ${when(g.S.savedAt)}</div><div class="btns"><button class="b pri" data-a="savebtn">💾 Guardar ahora</button></div></div>` +
       `<div class="pn"><b>Copia de seguridad</b><div class="mu">Si el navegador borra sus datos, perderías la partida. Descarga una copia de vez en cuando. ` +
       `También puedes cargar aquí la copia exportada desde la versión anterior del juego.</div>` +
@@ -41,7 +63,10 @@ export function openBackup(d: BackupDeps): void {
     const a = (e.target as HTMLElement).closest<HTMLElement>('[data-a]')?.dataset.a;
     const g = d.game();
     if (!a || !g) return;
-    if (a === 'savebtn') {
+    if (a === 'reload') {
+      d.saveNow();
+      location.reload();
+    } else if (a === 'savebtn') {
       if (d.saveNow()) toast('💾 Partida guardada · ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
       closeModal();
       openBackup(d);
