@@ -16,7 +16,7 @@ export function createWorld(canvas: HTMLCanvasElement): World {
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#8fc6e8');
+  scene.background = new THREE.Color('#5d636c');
   return { renderer, scene };
 }
 

@@ -11,7 +11,9 @@ npm test         # tests de lógica (Vitest)
 npm run build    # comprobación de tipos + build de producción en dist/
 ```
 
-Parámetros de depuración de la escena de prueba: `?f0` (solo suelo vacío), `?view=12` (metros visibles), `?x=-2&z=-1` (centro de la cámara).
+Parámetros de depuración: `?debug` (FPS y llamadas de dibujo) y `?f0` (solo el suelo vacío de la Fase 0).
+
+Cámara: arrastrar para mover, pellizcar o rueda para zoom, y los botones ＋ / － / ⤢ (este último cambia entre cámara automática, toda la tienda y calle, como en la v10).
 
 ## Publicación
 

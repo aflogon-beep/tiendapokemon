@@ -3,45 +3,86 @@ import * as THREE from 'three';
 // Ángulos de la vista isométrica clásica: 45° de giro y arctan(1/√2) ≈ 35,26° de inclinación
 const YAW = Math.PI / 4;
 const PITCH = Math.atan(1 / Math.SQRT2);
-const DISTANCE = 50;
+const DISTANCE = 80;
+
+/** Modos de la v10: automática, toda la tienda, calle y manual (tras tocar la pantalla) */
+export type CamMode = 'auto' | 'fit' | 'city' | 'manual';
+
+export interface View {
+  target: THREE.Vector3;
+  /** Metros visibles en el lado más corto de la pantalla */
+  size: number;
+}
 
 export interface IsoCamera {
   camera: THREE.OrthographicCamera;
-  target: THREE.Vector3;
-  /** Metros visibles en el lado más corto de la pantalla */
-  viewSize: number;
+  view: View;
+  aspect: number;
+  /** Vectores en el suelo que corresponden a la derecha y arriba de la pantalla */
+  right: THREE.Vector3;
+  up: THREE.Vector3;
   resize(width: number, height: number): void;
-  update(): void;
+  apply(): void;
+  /** Metros de pantalla visibles en ancho y alto */
+  extent(): { w: number; h: number };
+  /** Tamaño de vista mínimo para que quepan los puntos (fit) o para llenar la pantalla con ellos (cover) */
+  frame(points: THREE.Vector3[], cover?: boolean): View;
 }
 
-export function createIsoCamera(viewSize = 12): IsoCamera {
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+export function createIsoCamera(): IsoCamera {
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 300);
+  const right = new THREE.Vector3(Math.cos(YAW), 0, -Math.sin(YAW));
+  const up = new THREE.Vector3(-Math.sin(YAW), 0, -Math.cos(YAW));
+  const offset = new THREE.Vector3(
+    Math.cos(PITCH) * Math.sin(YAW),
+    Math.sin(PITCH),
+    Math.cos(PITCH) * Math.cos(YAW),
+  ).multiplyScalar(DISTANCE);
+  // En pantalla, un metro de suelo hacia "arriba" se ve acortado por la inclinación
+  const upScale = Math.sin(PITCH);
+
   const iso: IsoCamera = {
     camera,
-    target: new THREE.Vector3(),
-    viewSize,
+    view: { target: new THREE.Vector3(), size: 20 },
+    aspect: 1,
+    right,
+    up,
     resize(width, height) {
-      // En vertical (móvil) manda el ancho; en horizontal, el alto
-      const aspect = width / Math.max(1, height);
-      const half = iso.viewSize / 2;
-      const hw = aspect < 1 ? half : half * aspect;
-      const hh = aspect < 1 ? half / aspect : half;
-      camera.left = -hw;
-      camera.right = hw;
-      camera.top = hh;
-      camera.bottom = -hh;
-      camera.updateProjectionMatrix();
+      iso.aspect = width / Math.max(1, height);
+      iso.apply();
     },
-    update() {
-      const t = iso.target;
-      camera.position.set(
-        t.x + DISTANCE * Math.cos(PITCH) * Math.sin(YAW),
-        t.y + DISTANCE * Math.sin(PITCH),
-        t.z + DISTANCE * Math.cos(PITCH) * Math.cos(YAW),
-      );
-      camera.lookAt(t);
+    extent() {
+      const s = iso.view.size, a = iso.aspect;
+      return a < 1 ? { w: s, h: s / a } : { w: s * a, h: s };
+    },
+    apply() {
+      const { w, h } = iso.extent();
+      camera.left = -w / 2;
+      camera.right = w / 2;
+      camera.top = h / 2;
+      camera.bottom = -h / 2;
+      camera.updateProjectionMatrix();
+      camera.position.copy(iso.view.target).add(offset);
+      camera.lookAt(iso.view.target);
+    },
+    frame(points, cover = false) {
+      // Proyección en pantalla de cada punto relativa al centro de la caja
+      const c = new THREE.Vector3();
+      points.forEach((p) => c.add(p));
+      c.divideScalar(points.length);
+      let hw = 0, hh = 0;
+      for (const p of points) {
+        const d = p.clone().sub(c);
+        hw = Math.max(hw, Math.abs(d.dot(right)));
+        hh = Math.max(hh, Math.abs(d.dot(up) * upScale + d.y * Math.cos(PITCH)));
+      }
+      const a = iso.aspect;
+      // size = lado corto; el largo es size/a (vertical) o size*a (horizontal)
+      const needW = a < 1 ? 2 * hw : (2 * hw) / a;
+      const needH = a < 1 ? 2 * hh * a : 2 * hh;
+      return { target: c, size: cover ? Math.min(needW, needH) : Math.max(needW, needH) };
     },
   };
-  iso.update();
+  iso.apply();
   return iso;
 }

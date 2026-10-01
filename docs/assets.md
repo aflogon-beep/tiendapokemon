@@ -22,9 +22,15 @@ Definida en `src/world/assets.ts` (`PACK_SCALE`):
 |---|---|---|
 | Mini Market | ×2,4 | baldosa de 2,4 m, paredes de 2,4 m, estantería de ~1,9 m |
 | Mini Characters | ×2,4 | personajes de 1,6–1,9 m (con pelo); misma serie que Mini Market, mismo factor |
-| City Kit Commercial | *ver escena de prueba* | planta de 0,4 unidades → ~3 m |
+| City Kit Commercial | ×7,5 | planta de 0,4 unidades → ~3 m |
 
-Pendiente de validar por Alberto con la captura de la F1.
+Validada por Alberto en la F1.
+
+### Distribución de la tienda (F2)
+
+`LAY` de la v10 se pasa a metros con una escala única, **100 px = 1 baldosa = 2,4 m** (`src/world/shop.ts`). Con ella el interior mide 8 × 5 baldosas exactas (x 0–800, y 48–548) y en cada hueco de estantería de `LAY` (150 px) caben dos módulos de Mini Market (2 × 80 px). Se descartó la escala de 1,5 cm/px del plan porque las estanterías de Mini Market (0,7 unidades de fondo, 1,7 m) no cabían entre las dos filas.
+
+Las paredes de Mini Market tienen 0,6 unidades de grosor: su cara interior se alinea con los bordes de `LAY`.
 
 ## Animaciones
 
@@ -48,10 +54,10 @@ El ancho de la caja envolvente (~0,77) es la pose en T con los brazos abiertos; 
 
 `wall-door-rotate` y `fence-door-rotate`: `open`, `close`, `open-and-close`.
 
-## Lo que no traen los packs
+## Lo que no traen los packs (decidido con Alberto)
 
-- **Mostrador largo**: Mini Market solo tiene `cash-register` (mueble de caja de 0,85 × 0,6 × 0,85). Para el mostrador de `LAY` (56 × 250 px) habrá que decidir en la F2 si se encadenan piezas o se hace uno propio.
-- **Vitrina de cartas**: no existe; se hará con geometría propia (o adaptando `freezer`, que es una vitrina horizontal).
+- **Mostrador largo**: se juntan piezas de Mini Market: una `cash-register` y dos `freezer` (vitrinas bajas) en línea. La registradora queda donde la dibuja la v10 (`c.y + 76`), frente al primero de la cola.
+- **Vitrina de cartas**: geometría propia (`src/world/props.ts`), igual que la mesa de sellado y la mesa del fondo.
 - Cartas, sobres, cajas, TPV, slabs y peanas: geometría propia, como dice `CLAUDE.md`.
 
 ## Modelos
