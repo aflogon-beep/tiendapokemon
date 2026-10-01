@@ -73,6 +73,10 @@ export function nz(dur: number, f0: number, f1: number, vol: number, type: Biqua
 
 let bellT = 0;
 export const sfx = {
+  meow: () => {
+    tone(760, 0, 0.12, 'triangle', 0.07);
+    tone(620, 0.1, 0.3, 'triangle', 0.06);
+  },
   tick: () => nz(0.05, 2600, 1800, 0.22, 'bandpass', 2),
   rip: () => {
     nz(0.35, 900, 4200, 0.5, 'bandpass', 0.8);

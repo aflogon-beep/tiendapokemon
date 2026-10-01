@@ -14,7 +14,10 @@ const N_DROPS = 420;
 const TOP = 12;
 
 const shopMin = toWorld(-10, FLOOR_T - 10), shopMax = toWorld(W + 10, FRONT_Y + 10);
-const inShop = (x: number, z: number) => x > shopMin.x && x < shopMax.x && z > shopMin.z && z < shopMax.z;
+// Se mira dónde cae la partícula en el suelo según la cámara: si se ve sobre la tienda, no se dibuja
+const view = new THREE.Vector3(0, -1, 0);
+const inShopAt = (x: number, z: number) => x > shopMin.x && x < shopMax.x && z > shopMin.z && z < shopMax.z;
+const inShop = (x: number, y: number, z: number) => inShopAt(x, z) || inShopAt(x - (view.x / view.y) * y, z - (view.z / view.y) * y);
 
 function discTexture(): THREE.Texture {
   const cv = document.createElement('canvas');
@@ -36,7 +39,7 @@ const KIND: Record<string, { cols: string[]; fall: number; size: number } | unde
 
 export interface Weather {
   /** pxPerM: píxeles de pantalla por metro con el zoom actual */
-  update(g: Game, dt: number, center: THREE.Vector3, viewSize: number, pxPerM: number): void;
+  update(g: Game, dt: number, center: THREE.Vector3, viewSize: number, pxPerM: number, viewDir: THREE.Vector3): void;
 }
 
 export function createWeather(scene: THREE.Scene, pixelRatio: number): Weather {
@@ -91,7 +94,8 @@ export function createWeather(scene: THREE.Scene, pixelRatio: number): Weather {
   };
 
   return {
-    update(g, dt, center, viewSize, pxPerM) {
+    update(g, dt, center, viewSize, pxPerM, viewDir) {
+      view.copy(viewDir);
       t += dt;
       cx.x = center.x;
       cx.z = center.z;
@@ -108,7 +112,7 @@ export function createWeather(scene: THREE.Scene, pixelRatio: number): Weather {
           fPos[j + 1] -= K.fall * dt * (0.7 + (i % 5) * 0.1);
           wrap(fPos, i, 3);
           // Dentro de la tienda no nieva (no tiene techo): vuelve a caer en otro sitio
-          if (fPos[j + 1] < 0 || inShop(fPos[j], fPos[j + 2])) scatter(fPos, i, 3, fPos[j + 1] < 0 ? TOP : fPos[j + 1]);
+          if (fPos[j + 1] < 0 || inShop(fPos[j], fPos[j + 1], fPos[j + 2])) scatter(fPos, i, 3, fPos[j + 1] < 0 ? TOP : fPos[j + 1]);
         }
         fGeo.attributes.position.needsUpdate = true;
       }
@@ -122,7 +126,7 @@ export function createWeather(scene: THREE.Scene, pixelRatio: number): Weather {
           rPos[j] += dt * 1.5;
           rPos[j + 1] -= dt * 14;
           wrap(rPos, i, 6);
-          if (rPos[j + 1] < 0 || inShop(rPos[j], rPos[j + 2])) scatter(rPos, i, 6, rPos[j + 1] < 0 ? TOP : rPos[j + 1]);
+          if (rPos[j + 1] < 0 || inShop(rPos[j], rPos[j + 1], rPos[j + 2])) scatter(rPos, i, 6, rPos[j + 1] < 0 ? TOP : rPos[j + 1]);
           // Segmento de 0,5 m con algo de inclinación
           rPos[j + 3] = rPos[j] - 0.08;
           rPos[j + 4] = rPos[j + 1] + 0.5;

@@ -15,6 +15,8 @@ import { createWeather } from './world/weather';
 import { createFacade } from './world/facade';
 import { createSeasonal } from './world/seasonal';
 import { createCrowd, type Crowd } from './world/crowd';
+import { createEffects } from './world/effects';
+import { createCat } from './world/cat';
 import { cycleCamera, mountZoomButtons } from './ui/zoomButtons';
 import { toast } from './ui/toast';
 import { hideLoading, loadingText, askOfflineWithRealSave } from './ui/loading';
@@ -34,7 +36,8 @@ import { serveFront } from './ui/serve';
 import { tutTick } from './ui/tutorial';
 import { sfx } from './ui/sound';
 import { FLOOR_T, FRONT_Y, LAY, W } from './systems/layout';
-import { front, type Customer } from './systems/customers';
+import { CT, front, type Customer } from './systems/customers';
+import { level, repv, tierOf } from './systems/economy';
 import { openShop } from './systems/day';
 import { boot } from './core/boot';
 import { createGame, newGame } from './core/setup';
@@ -60,6 +63,12 @@ const dayNight = createDayNight(scene, lights);
 const weather = createWeather(scene, renderer.getPixelRatio());
 const facade = createFacade(scene, occ);
 const seasonal = createSeasonal(scene);
+const effects = createEffects(scene);
+const cat = createCat(scene);
+// En ?debug se pueden lanzar efectos desde la consola
+if (showDebug) Object.assign(window, { pcs3d: { effects, cat, toWorld } });
+// Altura de la cabeza de un cliente según su escala
+const headOf = (c: Customer) => toWorld(c.x, c.y).setY(2.1 * (CT[c.type].sc ?? 1));
 
 // Esquinas (en px de la v10) de lo que encuadra cada vista; incluye algo de altura
 const box = (x0: number, y0: number, x1: number, y1: number, h: number) =>
@@ -123,9 +132,9 @@ let note = '';
 const fx: GameFx = {
   toast,
   sound: (s) => sfx[s](),
-  hearts: () => {},
-  coins: () => {},
-  shake: () => {},
+  hearts: (c, n) => effects.hearts(headOf(c), n),
+  coins: (c, v) => effects.coins(toWorld(c.x, c.y).setY(1.3), v),
+  shake: (v) => effects.shake(v),
   daySummary: () => {
     loop?.saveNow();
     refreshHud();
@@ -158,6 +167,13 @@ cam.onTap = (ground) => {
   const g = game;
   if (!g) return;
   const p = toPx(ground), f = front(g);
+  // El gato maúlla si lo tocas (meow de la v10)
+  if (Math.hypot(p.x - cat.pos.x, p.y - cat.pos.y) < 24) {
+    cat.meow();
+    sfx.meow();
+    effects.hearts(toWorld(cat.pos.x, cat.pos.y).setY(0.6), 2);
+    return;
+  }
   if (f && Math.hypot(p.x - f.x, p.y - f.y) < 40) return serveFront(g);
   // Si no, la ficha del cliente más cercano al dedo
   let best: Customer | null = null, bd = 30;
@@ -224,6 +240,17 @@ if (params.has('f0')) {
     loadingText(`Error al arrancar: ${String(err)}`);
   });
 
+// Estrellas al subir la reputación (junto a la caja) o la categoría (en el letrero)
+const viewDir = new THREE.Vector3();
+let lastRep: number | null = null, lastTier: number | null = null;
+function celebrate(g: Game): void {
+  const rv = repv(g.S), tr = tierOf(level(g));
+  if (lastRep != null && rv > lastRep) effects.stars(toWorld(LAY.counter.x + 28, LAY.counter.y - 30).setY(1.8), 8 + Math.min(12, (rv - lastRep) * 4));
+  if (lastTier != null && tr > lastTier) effects.stars(toWorld(W / 2, FLOOR_T + 10).setY(2), 24);
+  lastRep = rv;
+  lastTier = tr;
+}
+
 /* ---------- render ---------- */
 
 const timer = new THREE.Timer();
@@ -246,7 +273,9 @@ renderer.setAnimationLoop((time) => {
     crowd?.update(game, raw, time / 1000);
     facade.update(game, raw);
     seasonal.update(game, time / 1000);
-    weather.update(game, raw, iso.view.target, iso.view.size, canvas.clientHeight / ((iso.camera.top - iso.camera.bottom) / iso.camera.zoom));
+    cat.update(game, raw, time / 1000);
+    celebrate(game);
+    weather.update(game, raw, iso.view.target, iso.view.size, canvas.clientHeight / ((iso.camera.top - iso.camera.bottom) / iso.camera.zoom), iso.camera.getWorldDirection(viewDir));
     if (chars) drawBubbles(game, chars.heads(iso.camera, canvas.clientWidth, canvas.clientHeight));
     tutTick();
   }
@@ -255,7 +284,11 @@ renderer.setAnimationLoop((time) => {
   occ.update(raw);
   followSun(sun, iso.view.target, iso.view.size);
   for (const m of mixers) m.update(raw);
+  // Temblor: se mueve la cámara solo para este fotograma
+  effects.update(raw);
+  iso.camera.position.add(effects.offset);
   renderer.render(scene, iso.camera);
+  iso.camera.position.sub(effects.offset);
   frames++;
   acc += real;
   if (showDebug && acc >= 0.5) {
